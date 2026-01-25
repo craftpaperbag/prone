@@ -86,7 +86,7 @@ export default function Home() {
 
       {!permissionGranted ? (
         <div className="text-center space-y-6">
-          <h1 className="text-4xl font-light tracking-widest mb-8">ZEN FLIP</h1>
+          <h1 className="text-4xl font-light tracking-widest mb-8">prone</h1>
           <p className="text-neutral-400">音を鳴らすには、センサーの許可が必要です。</p>
           <button
             onClick={requestPermission}
