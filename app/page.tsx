@@ -1,65 +1,113 @@
-import Image from "next/image";
+// app/page.tsx
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [isFaceDown, setIsFaceDown] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // iOS 13+ では、ユーザーのアクション（タップ）がないとセンサー許可を要求できない
+  const requestPermission = async () => {
+    if (
+      typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof (DeviceOrientationEvent as any).requestPermission === 'function'
+    ) {
+      try {
+        const response = await (DeviceOrientationEvent as any).requestPermission();
+        if (response === 'granted') {
+          setPermissionGranted(true);
+          startListening();
+        } else {
+          alert('センサーの使用が拒否されました。設定を確認してね。');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      // AndroidやPCなど、許可が不要な場合
+      setPermissionGranted(true);
+      startListening();
+    }
+  };
+
+  const startListening = () => {
+    window.addEventListener('deviceorientation', handleOrientation);
+    
+    // Wake Lock API (画面常時点灯) のリクエスト
+    // スマホを伏せてもスリープしないようにする
+    if ('wakeLock' in navigator) {
+      try {
+        (navigator as any).wakeLock.request('screen');
+      } catch (err) {
+        console.log('Wake Lock error:', err);
+      }
+    }
+  };
+
+  const handleOrientation = (event: DeviceOrientationEvent) => {
+    const beta = event.beta; // 前後の傾き (-180 ~ 180)
+    
+    // betaのデバッグ表示（開発用）
+    setDebugInfo(`Beta: ${beta?.toFixed(0)}`);
+
+    // およそ180度（または-180度）に近いとき＝伏せている状態
+    // 完全に平らじゃなくても反応するように、絶対値150以上くらいを判定ラインにする
+    if (beta && (Math.abs(beta) > 150)) {
+      setIsFaceDown(true);
+    } else {
+      setIsFaceDown(false);
+    }
+  };
+
+  // 伏せた状態(isFaceDown)が変わった時の副作用
+  useEffect(() => {
+    if (!audioRef.current) return;
+
+    if (isFaceDown) {
+      // 伏せたら再生（フェードインさせてもおしゃれかも）
+      audioRef.current.play().catch(e => console.log('Audio play error', e));
+    } else {
+      // 表に向けたら停止
+      audioRef.current.pause();
+      // 次回のために時間を巻き戻しておくかはお好みで
+      // audioRef.current.currentTime = 0; 
+    }
+  }, [isFaceDown]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="flex min-h-screen flex-col items-center justify-center bg-neutral-900 text-white p-4 transition-colors duration-1000"
+      style={{ backgroundColor: isFaceDown ? '#000000' : '#171717' }}
+    >
+      {/* 隠しオーディオ要素 */}
+      <audio ref={audioRef} src="/rain.mp3" loop hidden />
+
+      {!permissionGranted ? (
+        <div className="text-center space-y-6">
+          <h1 className="text-4xl font-light tracking-widest mb-8">ZEN FLIP</h1>
+          <p className="text-neutral-400">音を鳴らすには、センサーの許可が必要です。</p>
+          <button
+            onClick={requestPermission}
+            className="px-8 py-3 border border-neutral-600 rounded-full hover:bg-neutral-800 transition active:scale-95"
+          >
+            Start Experience
+          </button>
+        </div>
+      ) : (
+        <div className="text-center space-y-4 animate-in fade-in duration-700">
+          <div className="text-6xl mb-4">
+            {isFaceDown ? '🌙' : '👀'}
+          </div>
+          <p className="text-xl font-light tracking-wider">
+            {isFaceDown ? 'Resting...' : 'Place face down'}
+          </p>
+          <p className="text-xs text-neutral-600 mt-8 font-mono">
+            {debugInfo}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+    </main>
   );
 }
