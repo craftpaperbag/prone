@@ -1,3 +1,6 @@
+> 📦 このリポジトリは過去の学習や試行錯誤の記録です。完成には至りませんでしたが、自分の歩みの一部として残しています。
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
